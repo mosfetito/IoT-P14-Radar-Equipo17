@@ -1,7 +1,7 @@
 # IoT-P14-Radar-Equipo17
 Proyecto Radar Ultrasónico - Fundamentos de IoT
 
-GT1 - Sensado, Calibración y Filtrado:
+## GT1 - Sensado, Calibración y Filtrado:
 
 Enlace Wokwi:https://wokwi.com/projects/472616824785157121
 
@@ -13,8 +13,8 @@ Mediana con ventana N=3
 
 Se eligió la mediana porque el sensor ultrasónico HC-SR04 genera aveces "ecos falsos" por rebotes del sonido. La mediana los elimina sin emborronar la detección de los obstáculos reales. Se eligió un N=3 porque el radar está en constante movimiento mediante el servomotor y necesitamos un retardo mínimo en la lectura
 
-GT2 
-## 1. Verificación Física del Sensor (Ítem 1 - GT2)
+## GT2 
+1. Verificación Física del Sensor (Ítem 1 - GT2)
 * **Sensor:** HC-SR04
 * **Familia de adquisición:** D (Tiempo de vuelo)
 * **Referencia empleada:** Regla física sobre la mesa.
@@ -37,4 +37,4 @@ Para la comunicación con el broker del laboratorio, el radar utiliza los siguie
 * **Tópico de Datos (Retenido):** `curso/E17/P14/radar1` (Envía el JSON con "angulo" y "distancia").
 * **Tópico de Estado (Testamento):** `curso/E17/P14/radar1/estado`
 * **Tópico de Comandos:** `curso/E17/P14/radar1/cmd`
-
+Nota: El archivo payload_sample.json adjunto es solo una muestra de la estructura que exige la rúbrica. Los datos reales no son inventados; serán generados y enviados en vivo por el ESP32 en la brevedad.

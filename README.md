@@ -37,4 +37,5 @@ Para la comunicación con el broker del laboratorio, el radar utiliza los siguie
 * **Tópico de Datos (Retenido):** `curso/E17/P14/radar1` (Envía el JSON con "angulo" y "distancia").
 * **Tópico de Estado (Testamento):** `curso/E17/P14/radar1/estado`
 * **Tópico de Comandos:** `curso/E17/P14/radar1/cmd`
+  
 Nota: El archivo payload_sample.json adjunto es solo una muestra de la estructura que exige la rúbrica. Los datos reales no son inventados; serán generados y enviados en vivo por el ESP32 en la brevedad.

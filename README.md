@@ -28,15 +28,13 @@ GT2
 | 5.0 cm | 5.0 cm | 4.3 cm | -0.7 cm | Sí |
 | 15.0 cm | 15.0 cm | 14.9 cm | -0.1 cm | Sí |
 
-d= 145.2 cm   ciclo=10737 us   peor ciclo=18018 us
-d= 145.0 cm   ciclo=10727 us   peor ciclo=18018 us
-d= 145.0 cm   ciclo=10727 us   peor ciclo=18018 us
-d= 145.1 cm   ciclo=10732 us   peor ciclo=18018 us
-d= 145.0 cm   ciclo=10727 us   peor ciclo=18018 us
-d= 145.1 cm   ciclo=10732 us   peor ciclo=18018 us
-d= 145.1 cm   ciclo=10733 us   peor ciclo=18018 us
-d= 145.1 cm   ciclo=10734 us   peor ciclo=18018 us
-d= 145.2 cm   ciclo=10737 us   peor ciclo=18018 us
-
 cuando llega a los 144cm o aproximado marca un limite 
+
+## GT4 - Conectividad MQTT y Formato JSON
+
+Para la comunicación con el broker del laboratorio, el radar utiliza los siguientes tópicos MQTT:
+
+* **Tópico de Datos (Retenido):** `curso/E17/P14/radar1` (Envía el JSON con "angulo" y "distancia").
+* **Tópico de Estado (Testamento):** `curso/E17/P14/radar1/estado`
+* **Tópico de Comandos:** `curso/E17/P14/radar1/cmd`
 

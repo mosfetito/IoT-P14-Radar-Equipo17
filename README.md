@@ -39,3 +39,14 @@ Para la comunicación con el broker del laboratorio, el radar utiliza los siguie
 * **Tópico de Comandos:** `curso/E17/P14/radar1/cmd`
   
 Nota: El archivo payload_sample.json adjunto es solo una muestra de la estructura que exige la rúbrica. Los datos reales no son inventados; serán generados y enviados en vivo por el ESP32 en la brevedad.
+
+## GT5 - Arquitectura de Ingesta y Esquema de Datos
+
+* **Ruta de Ingesta:** Los datos viajan desde el microcontrolador hasta la base de datos siguiendo la ruta: `ESP32 -> Mosquitto -> Telegraf -> InfluxDB`.
+* **Almacenamiento:** La información se persiste en la organización `curso-iot`, dentro del bucket común `mediciones` y el measurement `mediciones`.
+* **Identidad (Tags):** Para aislar los datos de nuestro radar agrícola, filtramos utilizando los tags estructurales: `equipo="E17"`, `proyecto="P14"` y `nodo="radar1"`.
+* **Datos medidos (Fields):** El campo principal monitoreado es `distancia` (de tipo numérico, medido en centímetros), el cual nos permite detectar intrusiones o proximidad en la zona monitoreada.
+
+q1_ultimo.flux: Obtiene la medición más reciente del sensor para revisar en tiempo real si hay un animal frente al radar en este instante.
+q2_promedio5m.flux: Calcula el promedio de distancia cada 5 minutos para descartar movimientos rápidos (falsas alarmas) y confirmar si un animal se quedó merodeando.
+q3_propia.flux: Busca la distancia mínima de las últimas 24 horas para saber exactamente qué tan cerca estuvo la mayor amenaza que se acercó al cultivo.

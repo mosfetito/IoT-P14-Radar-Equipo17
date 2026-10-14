@@ -1,0 +1,7 @@
+from(bucket: "mediciones")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "mediciones")
+  |> filter(fn: (r) => r.equipo == "E17" and r.proyecto == "P14" and r.nodo == "radar1")
+  |> filter(fn: (r) => r._field == "distancia")
+  |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
+  |> yield(name: "promedio_5m")

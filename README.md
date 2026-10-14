@@ -48,5 +48,7 @@ Nota: El archivo payload_sample.json adjunto es solo una muestra de la estructur
 * **Datos medidos (Fields):** El campo principal monitoreado es `distancia` (de tipo numérico, medido en centímetros), el cual nos permite detectar intrusiones o proximidad en la zona monitoreada.
 
 q1_ultimo.flux: Obtiene la medición más reciente del sensor para revisar en tiempo real si hay un animal frente al radar en este instante.
+
 q2_promedio5m.flux: Calcula el promedio de distancia cada 5 minutos para descartar movimientos rápidos (falsas alarmas) y confirmar si un animal se quedó merodeando.
+
 q3_propia.flux: Busca la distancia mínima de las últimas 24 horas para saber exactamente qué tan cerca estuvo la mayor amenaza que se acercó al cultivo.

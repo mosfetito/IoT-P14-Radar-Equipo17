@@ -1,4 +1,4 @@
-#include "config.h" 
+#include "config.h"
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -14,7 +14,6 @@ Adafruit_SSD1306 oled(ANCHO_PANTALLA, ALTO_PANTALLA, &Wire, -1);
 Servo miServo;
 
 //pines
-
 const int pinTrig   = 26;
 const int pinEcho   = 25;
 const int pinVerde  = 32;
@@ -23,21 +22,21 @@ const int pinBuzzer = 27;
 const int pinServo  = 14;
 const int pinBotonReset = 13;
 
-enum EstadoRadar { BARRIENDO_IDA, BARRIENDO_VUELTA, MODO_ALERTA };
+enum EstadoRadar { BARRIENDO_IDA, BARRIENDO_VUELTA, MODO_ALERTA, ERROR_SEGURO };
 EstadoRadar estadoActual = BARRIENDO_IDA;
 
 int anguloActual = 0;
 float ultimaDistancia = 0.0; 
+int lecturasInvalidas = 0; 
 
 unsigned long tiempoAnterior = 0;
-const unsigned long T_ASENTAMIENTO_MS = 200; 
+const unsigned long T_ASENTAMIENTO_MS = 600; 
 const unsigned long T_PAUSA_ALERTA = 300;
 
 unsigned long ultimoDebounceBoton = 0;
 bool estadoBotonAnterior = HIGH;
 
 // configuracion red wifi
-
 WiFiClient espClient;
 PubSubClient mqtt(espClient);
 
@@ -46,11 +45,10 @@ String clientId, topicDatos, topicEstado, topicCmd;
 unsigned long tWiFi = 0;
 unsigned long tReconexMQTT = 0;
 unsigned long tPublicacion = 0;
-const unsigned long PERIODO_PUB_MS = 5000;
+const unsigned long PERIODO_PUB_MS = 1000; 
 const unsigned long ESPERA_RECONEX = 5000;
 
 //Funciones del radar local
-
 float medirDistancia() {
   digitalWrite(pinTrig, LOW);
   delayMicroseconds(2);
@@ -59,8 +57,11 @@ float medirDistancia() {
   digitalWrite(pinTrig, LOW);
 
   long duracion = pulseIn(pinEcho, HIGH, 25000); 
-  if (duracion == 0) return 400.0;
-  return (duracion * 0.0343 / 2.0);
+  
+  if (duracion == 0) return -1.0; 
+  
+  float distancia_cruda = (duracion * 0.0343) / 2.0;
+  return (distancia_cruda * 0.97087) + 0.1845; 
 }
 
 void reiniciarSistema() {
@@ -76,6 +77,7 @@ void reiniciarSistema() {
   oled.display();
 
   anguloActual = 0;
+  lecturasInvalidas = 0; 
   miServo.write(0);
   estadoActual = BARRIENDO_IDA;
   delay(1000); 
@@ -120,8 +122,25 @@ void procesarAnguloFSM(int angulo, float distancia) {
   }
 }
 
-//Funciones de conectividad no bloqueante
+// LECTURA DE COMANDOS DESDE NODE-RED (Ítem A5)
+void onMqttMessage(char* topic, byte* payload, unsigned int len) {
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, payload, len);
+  if (err) return; 
 
+  const char* cmd = doc["cmd"] | "";
+  
+  if (strcmp(cmd, "ON") == 0) {
+    Serial.println("[cmd recibido] ON");
+    digitalWrite(pinRojo, HIGH); 
+  } 
+  else if (strcmp(cmd, "OFF") == 0) {
+    Serial.println("[cmd recibido] OFF");
+    digitalWrite(pinRojo, LOW);
+  }
+}
+
+//Funciones de conectividad no bloqueante
 void mantenerWiFi() {
   if (WiFi.status() == WL_CONNECTED) return;
   unsigned long ahora = millis();
@@ -156,8 +175,15 @@ void publicarDatosJson() {
       doc["distancia"] = roundf(ultimaDistancia * 10.0f) / 10.0f;
   }
 
+  // LÍNEA AGREGADA: Ingesta del estado para el panel State Timeline de Grafana
+  doc["estado"] = (uint8_t)estadoActual; 
+
   char payload[128];
   size_t n = serializeJson(doc, payload, sizeof(payload));
+
+  Serial.print("Publicando al Broker: ");
+  serializeJson(doc, Serial); 
+  Serial.println();
 
   mqtt.publish(topicDatos.c_str(), (uint8_t*)payload, n, true);
 }
@@ -165,6 +191,7 @@ void publicarDatosJson() {
 //setup y loop
 void setup() {
   Serial.begin(115200);
+  Serial.println("\n--- Iniciando Radar ESP32 ---"); 
 
   pinMode(pinTrig, OUTPUT);
   pinMode(pinEcho, INPUT);
@@ -204,6 +231,9 @@ void setup() {
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setBufferSize(512);
+  
+  // LÍNEA AGREGADA: Declaración del callback para recibir órdenes MQTT
+  mqtt.setCallback(onMqttMessage); 
 
   oled.clearDisplay();
   oled.setCursor(0, 30);
@@ -237,11 +267,22 @@ void loop() {
         tiempoAnterior = tiempoActual;
         miServo.write(anguloActual);
         float distancia = medirDistancia();
-        procesarAnguloFSM(anguloActual, distancia);
+        
+        if (distancia < 0) {
+          lecturasInvalidas++;
+          distancia = 400.0; 
+        } else {
+          lecturasInvalidas = 0;
+        }
 
-        if (distancia <= 8.0) estadoActual = MODO_ALERTA;
-        else if (anguloActual >= 180) estadoActual = BARRIENDO_VUELTA;
-        else anguloActual += 2;
+        if (lecturasInvalidas >= 6) {
+          estadoActual = ERROR_SEGURO;
+        } else {
+          procesarAnguloFSM(anguloActual, distancia);
+          if (distancia <= 8.0) estadoActual = MODO_ALERTA;
+          else if (anguloActual >= 180) estadoActual = BARRIENDO_VUELTA;
+          else anguloActual += 1; 
+        }
       }
       break;
 
@@ -250,11 +291,22 @@ void loop() {
         tiempoAnterior = tiempoActual;
         miServo.write(anguloActual);
         float distancia = medirDistancia();
-        procesarAnguloFSM(anguloActual, distancia);
 
-        if (distancia <= 8.0) estadoActual = MODO_ALERTA;
-        else if (anguloActual <= 0) estadoActual = BARRIENDO_IDA;
-        else anguloActual -= 2;
+        if (distancia < 0) {
+          lecturasInvalidas++;
+          distancia = 400.0; 
+        } else {
+          lecturasInvalidas = 0;
+        }
+
+        if (lecturasInvalidas >= 6) {
+          estadoActual = ERROR_SEGURO;
+        } else {
+          procesarAnguloFSM(anguloActual, distancia);
+          if (distancia <= 8.0) estadoActual = MODO_ALERTA;
+          else if (anguloActual <= 0) estadoActual = BARRIENDO_IDA;
+          else anguloActual -= 1; 
+        }
       }
       break;
 
@@ -262,6 +314,24 @@ void loop() {
       if (tiempoActual - tiempoAnterior >= T_PAUSA_ALERTA) {
         tiempoAnterior = tiempoActual;
         estadoActual = BARRIENDO_IDA;
+      }
+      break;
+
+    case ERROR_SEGURO:
+      digitalWrite(pinRojo, HIGH); 
+      digitalWrite(pinVerde, LOW);
+      noTone(pinBuzzer);
+      
+      if (tiempoActual - tiempoAnterior >= 1000) {
+        tiempoAnterior = tiempoActual;
+        oled.clearDisplay();
+        oled.setCursor(0, 10);
+        oled.println("ERROR SENSOR");
+        oled.setCursor(0, 30);
+        oled.println("Cable desconectado?");
+        oled.setCursor(0, 50);
+        oled.println("Pulse boton p/ reset");
+        oled.display();
       }
       break;
   }

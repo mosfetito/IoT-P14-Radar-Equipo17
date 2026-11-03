@@ -52,3 +52,17 @@ q1_ultimo.flux: Obtiene la medición más reciente del sensor para revisar en ti
 q2_promedio5m.flux: Calcula el promedio de distancia cada 5 minutos para descartar movimientos rápidos (falsas alarmas) y confirmar si un animal se quedó merodeando.
 
 q3_propia.flux: Busca la distancia mínima de las últimas 24 horas para saber exactamente qué tan cerca estuvo la mayor amenaza que se acercó al cultivo.
+
+## GT6 - Grafana, Alertas y Comando por Node-RED
+
+**a) Umbral de alerta**
+El umbral de alerta está definido en **8 cm**. Este valor proviene de la definición inicial del proyecto (charter) y coincide con el umbral lógico utilizado por la Máquina de Estados Finitos (FSM) implementada en la GT2.
+
+**b) Margen frente al ruido**
+En la GT1, estimamos que el ruido de nuestro sensor ultrasónico HC-SR04 tiene una desviación estándar (σ) de 0.5 cm (coherente con nuestra tolerancia declarada de ± 2 cm). Sabiendo que nuestra distancia en operación normal sin obstáculos es de aproximadamente 40 cm, tenemos un margen físico de 32 cm hasta llegar al umbral de 8 cm. Este margen equivale a 64 veces nuestro valor de σ (32 / 0.5), lo que garantiza que el ruido térmico o acústico normal del sensor jamás provocará un falso disparo de la alerta.
+
+**c) Justificación del tiempo "for" (2 minutos)**
+Se configuró un período pendiente ("for") de 2 minutos. Este tiempo es el más adecuado para el fenómeno que mide nuestro radar, ya que nos permite filtrar lecturas transitorias (por ejemplo, alguien pasando rápidamente frente al sensor o un objeto cayendo). La alerta pasará a Firing solo si el obstáculo permanece estático o merodeando a menos de 8 cm durante al menos 2 minutos continuos, confirmando una intrusión real.
+
+**d) Comportamiento ante pérdida de conexión**
+Si el microcontrolador ESP32 se apaga, pierde conexión WiFi o deja de publicar datos en el broker MQTT, la consulta que habia sido configurada para los últimos 5 min dejara de recibir posibles lecturas. Cuando esto pasa, la regla en Grafana pasará automáticamente al estado **NoData**.
